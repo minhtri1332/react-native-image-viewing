@@ -33,6 +33,7 @@ type Props = {
   imageSrc: ImageSource;
   onRequestClose: () => void;
   onZoom: (isZoomed: boolean) => void;
+  onOffsetY: (offsetY: number) => void;
   onLongPress: (image: ImageSource) => void;
   delayLongPress: number;
   swipeToCloseEnabled?: boolean;
@@ -42,6 +43,7 @@ type Props = {
 const ImageItem = ({
   imageSrc,
   onZoom,
+  onOffsetY,
   onRequestClose,
   onLongPress,
   delayLongPress,
@@ -51,7 +53,6 @@ const ImageItem = ({
   const imageContainer = React.createRef<any>();
   const imageDimensions = useImageDimensions(imageSrc);
   const [translate, scale] = getImageTransform(imageDimensions, SCREEN);
-  const scrollValueY = new Animated.Value(0);
   const [isLoaded, setLoadEnd] = useState(false);
 
   const onLoaded = useCallback(() => setLoadEnd(true), []);
@@ -83,11 +84,8 @@ const ImageItem = ({
     translateValue,
     scaleValue
   );
-  const imageOpacity = scrollValueY.interpolate({
-    inputRange: [-SWIPE_CLOSE_OFFSET, 0, SWIPE_CLOSE_OFFSET],
-    outputRange: [0.7, 1, 0.7],
-  });
-  const imageStylesWithOpacity = { ...imagesStyles, opacity: imageOpacity };
+
+  const imageStylesWithOpacity = { ...imagesStyles};
 
   const onScrollEndDrag = ({
     nativeEvent,
@@ -108,8 +106,7 @@ const ImageItem = ({
     nativeEvent,
   }: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = nativeEvent?.contentOffset?.y ?? 0;
-
-    scrollValueY.setValue(offsetY);
+    onOffsetY(offsetY);
   };
 
   return (
@@ -149,3 +146,4 @@ const styles = StyleSheet.create({
 });
 
 export default React.memo(ImageItem);
+
