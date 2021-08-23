@@ -6,7 +6,7 @@
  *
  */
 
-import React, { ComponentType, useCallback, useEffect } from "react";
+import React, {ComponentType, useCallback, useEffect, useState} from "react";
 import {
   Animated,
   Dimensions,
@@ -14,9 +14,8 @@ import {
   View,
   VirtualizedList,
   ModalProps,
-  Modal,
 } from "react-native";
-
+import Modal from 'react-native-modal';
 import ImageItem from "./components/ImageItem/ImageItem";
 import ImageDefaultHeader from "./components/ImageDefaultHeader";
 import StatusBarManager from "./components/StatusBarManager";
@@ -48,6 +47,7 @@ const DEFAULT_BG_COLOR = "#000";
 const DEFAULT_DELAY_LONG_PRESS = 800;
 const SCREEN = Dimensions.get("screen");
 const SCREEN_WIDTH = SCREEN.width;
+const SCREEN_HEIFGHT = SCREEN.height;
 
 function ImageViewing({
   images,
@@ -73,6 +73,8 @@ function ImageViewing({
     footerTransform,
     toggleBarsVisible,
   ] = useAnimatedComponents();
+  const [isZoom, setIsZoom] = useState(false);
+  const scrollValueY = new Animated.Value(0);
 
   useEffect(() => {
     if (onImageIndexChange) {
@@ -82,12 +84,24 @@ function ImageViewing({
 
   const onZoom = useCallback(
     (isScaled: boolean) => {
+      setIsZoom(isScaled)
       // @ts-ignore
       imageList?.current?.setNativeProps({ scrollEnabled: !isScaled });
       toggleBarsVisible(!isScaled);
     },
     [imageList],
   );
+  const onOffsetY = useCallback(
+    (offsetY: number) => {
+      scrollValueY.setValue(offsetY);
+    },
+    [scrollValueY],
+  );
+
+  const imageOpacity = scrollValueY.interpolate({
+    inputRange: [-75, 0, 75],
+    outputRange: [0.7, 1, 0.7],
+  });
 
   if (!visible) {
     return null;
@@ -95,16 +109,23 @@ function ImageViewing({
 
   return (
     <Modal
-      transparent={presentationStyle === "overFullScreen"}
-      visible={visible}
+      isVisible={visible}
       presentationStyle={presentationStyle}
-      animationType={animationType}
-      onRequestClose={onRequestCloseEnhanced}
+      deviceHeight={SCREEN_HEIFGHT}
+      deviceWidth={SCREEN_WIDTH}
+      onBackdropPress={onRequestClose}
+      onDismiss={onRequestClose}
+      onBackButtonPress={onRequestClose}
+      onSwipeComplete={onRequestClose}
+      useNativeDriver={true}
+      animationIn={'zoomIn'}
+      animationOut={'zoomOut'}
+      hideModalContentWhileAnimating={true}
       supportedOrientations={["portrait"]}
-      hardwareAccelerated
+      style={{ margin: 0}}
     >
       <StatusBarManager presentationStyle={presentationStyle} />
-      <View style={[styles.container, { opacity, backgroundColor }]}>
+      <Animated.View style={[ { opacity: imageOpacity , backgroundColor:'black'}]}>
         <Animated.View style={[styles.header, { transform: headerTransform }]}>
           {typeof HeaderComponent !== "undefined"
             ? (
@@ -137,11 +158,12 @@ function ImageViewing({
           renderItem={({ item: imageSrc }) => (
             <ImageItem
               onZoom={onZoom}
+              onOffsetY={onOffsetY}
               imageSrc={imageSrc}
               onRequestClose={onRequestCloseEnhanced}
               onLongPress={onLongPress}
               delayLongPress={delayLongPress}
-              swipeToCloseEnabled={swipeToCloseEnabled}
+              swipeToCloseEnabled={!isZoom ? swipeToCloseEnabled : false}
               doubleTapToZoomEnabled={doubleTapToZoomEnabled}
             />
           )}
@@ -158,7 +180,7 @@ function ImageViewing({
             })}
           </Animated.View>
         )}
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -187,3 +209,4 @@ const EnhancedImageViewing = (props: Props) => (
 );
 
 export default EnhancedImageViewing;
+
